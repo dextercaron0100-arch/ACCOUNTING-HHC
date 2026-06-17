@@ -35,20 +35,20 @@ export class ReportingService {
         select: { debitAmount: true, creditAmount: true },
       }),
       this.prisma.invoice.aggregate({
-        where: { companyId, type: 'SALE', status: { in: ['OPEN', 'PARTIAL'] } },
+        where: { companyId, type: 'SALE', status: { in: ['SENT', 'PARTIAL'] as any } },
         _sum: { total: true, paidAmount: true },
       }),
       this.prisma.invoice.aggregate({
-        where: { companyId, type: 'PURCHASE', status: { in: ['OPEN', 'PARTIAL'] } },
+        where: { companyId, type: 'PURCHASE', status: { in: ['SENT', 'PARTIAL'] as any } },
         _sum: { total: true, paidAmount: true },
       }),
-      this.prisma.invoice.count({ where: { companyId, type: 'SALE', dueDate: { lt: now }, status: { in: ['OPEN', 'PARTIAL'] } } }),
+      this.prisma.invoice.count({ where: { companyId, type: 'SALE', dueDate: { lt: now }, status: { in: ['SENT', 'PARTIAL'] as any } } }),
     ]);
 
     const revenue = revLines.reduce((s, l) => s.plus(l.creditAmount.toString()).minus(l.debitAmount.toString()), new Decimal(0));
     const expenses = expLines.reduce((s, l) => s.plus(l.debitAmount.toString()).minus(l.creditAmount.toString()), new Decimal(0));
-    const arTotal = new Decimal((arBalance._sum.total ?? 0).toString()).minus((arBalance._sum.paidAmount ?? 0).toString());
-    const apTotal = new Decimal((apBalance._sum.total ?? 0).toString()).minus((apBalance._sum.paidAmount ?? 0).toString());
+    const arTotal = new Decimal(((arBalance._sum?.total ?? 0)).toString()).minus(((arBalance._sum?.paidAmount ?? 0)).toString());
+    const apTotal = new Decimal(((apBalance._sum?.total ?? 0)).toString()).minus(((apBalance._sum?.paidAmount ?? 0)).toString());
 
     return {
       revenueThisMonth: revenue.toFixed(2),

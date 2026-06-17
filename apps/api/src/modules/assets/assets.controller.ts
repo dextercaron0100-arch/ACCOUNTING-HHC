@@ -24,6 +24,6 @@ export class AssetsController {
   @Post(':id/dispose')
   @HttpCode(HttpStatus.OK)
   dispose(@Param('id') id: string, @CompanyId() c: string, @Body() dto: Record<string, unknown>, @CurrentUser() user: JwtPayload) {
-    return this.assetsService.dispose(id, c, { ...dto as never, userId: user.sub });
+    return this.assetsService.dispose(id, c, { ...(dto as any), userId: user.sub } as any);
   }
 }

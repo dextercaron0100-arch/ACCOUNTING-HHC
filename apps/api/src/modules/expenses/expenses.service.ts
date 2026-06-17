@@ -11,7 +11,7 @@ export class ExpensesService {
     const { skip, take, page, limit } = getPaginationParams(query);
     const where: Record<string, unknown> = { companyId };
     if (query.status) where.status = query.status;
-    if (query.userId) where.submittedBy = query.userId;
+    if (query.userId) where.employeeId = query.userId;
 
     const [total, data] = await Promise.all([
       this.prisma.expenseClaim.count({ where }),
@@ -20,7 +20,7 @@ export class ExpensesService {
         skip,
         take,
         orderBy: { submittedAt: 'desc' },
-        include: { lines: true, submitter: { select: { id: true, name: true, email: true } } },
+        include: { lines: true, employee: true },
       }),
     ]);
     return buildPaginatedResponse(data, total, page, limit);
@@ -30,8 +30,8 @@ export class ExpensesService {
     const claim = await this.prisma.expenseClaim.findFirst({
       where: { id, companyId },
       include: {
-        lines: { include: { account: true } },
-        submitter: { select: { id: true, name: true, email: true } },
+        lines: true,
+        employee: true,
         approvals: { orderBy: { createdAt: 'asc' } },
       },
     });
@@ -51,13 +51,14 @@ export class ExpensesService {
     if (!dto.lines || dto.lines.length === 0) throw new BadRequestException('Expense claim must have at least one line');
 
     const totalAmount = dto.lines.reduce((sum, l) => sum.plus(new Decimal(l.amount)), new Decimal(0));
+    const claimNo = `EXP-${Date.now()}`;
 
     return this.prisma.expenseClaim.create({
       data: {
         companyId,
-        submittedBy: userId,
-        title: dto.title,
-        description: dto.description,
+        employeeId: userId,
+        claimNo,
+        description: dto.description ?? dto.title,
         totalAmount: totalAmount.toFixed(4),
         status: 'DRAFT',
         lines: {
@@ -65,7 +66,7 @@ export class ExpensesService {
             accountId: l.accountId,
             description: l.description,
             amount: new Decimal(l.amount).toFixed(4),
-            receiptKey: l.receiptKey,
+            date: new Date(),
             lineNo: i + 1,
           })),
         },
@@ -77,7 +78,7 @@ export class ExpensesService {
   async submitClaim(id: string, companyId: string, userId: string) {
     const claim = await this.prisma.expenseClaim.findFirst({ where: { id, companyId } });
     if (!claim) throw new NotFoundException('Expense claim not found');
-    if (claim.submittedBy !== userId) throw new ForbiddenException('You can only submit your own claims');
+    if (claim.employeeId !== userId) throw new ForbiddenException('You can only submit your own claims');
     if (claim.status !== 'DRAFT') throw new BadRequestException('Only DRAFT claims can be submitted');
 
     return this.prisma.expenseClaim.update({
@@ -95,10 +96,11 @@ export class ExpensesService {
 
     await this.prisma.approval.create({
       data: {
-        expenseClaimId: id,
-        approvedBy: approverId,
-        status: newStatus,
-        note,
+        referenceType: 'EXPENSE_CLAIM',
+        referenceId: id,
+        approverId,
+        status: newStatus as any,
+        comments: note,
       },
     });
 
@@ -111,7 +113,7 @@ export class ExpensesService {
   async reimburse(id: string, companyId: string, userId: string, cashAccountId: string) {
     const claim = await this.prisma.expenseClaim.findFirst({
       where: { id, companyId },
-      include: { lines: { include: { account: true } } },
+      include: { lines: true },
     });
     if (!claim) throw new NotFoundException('Expense claim not found');
     if (claim.status !== 'APPROVED') throw new BadRequestException('Claim must be APPROVED before reimbursement');
@@ -128,9 +130,9 @@ export class ExpensesService {
     let lineNo = 1;
 
     for (const l of claim.lines) {
-      lines.push({ accountId: l.accountId, debitAmount: l.amount.toString(), creditAmount: '0.0000', memo: l.description, lineNo: lineNo++ });
+      lines.push({ accountId: l.accountId ?? cashAcc.id, debitAmount: l.amount.toString(), creditAmount: '0.0000', memo: l.description, lineNo: lineNo++ });
     }
-    lines.push({ accountId: cashAcc.id, debitAmount: '0.0000', creditAmount: claim.totalAmount.toString(), memo: `Reimbursement: ${claim.title}`, lineNo: lineNo++ });
+    lines.push({ accountId: cashAcc.id, debitAmount: '0.0000', creditAmount: claim.totalAmount.toString(), memo: `Reimbursement: ${claim.description}`, lineNo: lineNo++ });
 
     const entry = await this.prisma.journalEntry.create({
       data: {
@@ -138,7 +140,7 @@ export class ExpensesService {
         periodId: period.id,
         reference: `EXP-${id.slice(0, 8)}`,
         date: new Date(),
-        description: `Expense reimbursement: ${claim.title}`,
+        description: `Expense reimbursement: ${claim.description}`,
         status: 'POSTED',
         postedAt: new Date(),
         postedBy: userId,

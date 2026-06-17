@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -17,7 +16,8 @@ async function bootstrap() {
   const webUrl = configService.get<string>('WEB_URL', 'http://localhost:5173');
 
   app.use(helmet());
-  app.use(cookieParser());
+  // cookie-parser skipped — using Authorization header for tokens in dev
+  // app.use(require('cookie-parser')());
 
   app.enableCors({
     origin: webUrl,

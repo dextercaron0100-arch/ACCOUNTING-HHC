@@ -79,7 +79,7 @@ export class BankingService {
       // Find journal entry line with matching amount on the bank's GL account
       const matchingLine = await this.prisma.journalEntryLine.findFirst({
         where: {
-          accountId: bankAccount.glAccountId,
+          accountId: bankAccount.glAccountId ?? undefined,
           entry: { date: { gte: dayBefore, lte: dayAfter }, status: 'POSTED' },
           OR: [
             { debitAmount: { equals: txnAmount.abs().toFixed(4) as never } },

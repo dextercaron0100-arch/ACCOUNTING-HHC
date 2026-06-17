@@ -37,7 +37,7 @@ export class CompaniesService {
   async getUserRoles(companyId: string) {
     return this.prisma.userCompany.findMany({
       where: { companyId },
-      include: { user: { select: { id: true, name: true, email: true } }, role: true },
+      include: { user: { select: { id: true, firstName: true, lastName: true, email: true } }, role: true },
     });
   }
 

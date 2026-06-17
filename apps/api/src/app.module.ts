@@ -27,6 +27,7 @@ import { CurrenciesModule } from './modules/currencies/currencies.module';
 import { TaxModule } from './modules/tax/tax.module';
 import { PeriodsModule } from './modules/periods/periods.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { HealthResolver } from './common/graphql/health.resolver';
 
 @Module({
   imports: [
@@ -74,5 +75,6 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     PeriodsModule,
     NotificationsModule,
   ],
+  providers: [HealthResolver],
 })
 export class AppModule {}

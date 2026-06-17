@@ -15,7 +15,7 @@ export class TaxService {
   }
 
   create(companyId: string, dto: { code: string; name: string; rate: string; type: string; glAccountId?: string; jurisdiction?: string }) {
-    return this.prisma.taxCode.create({ data: { ...dto, companyId } });
+    return this.prisma.taxCode.create({ data: { ...(dto as any), companyId } });
   }
 
   computeTax(amount: string, taxCodeId: string, companyId: string) {

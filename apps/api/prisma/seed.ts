@@ -162,25 +162,25 @@ async function main() {
   const vatPayable = await createAccount('2104', 'Output VAT Payable', liabilityType!.id, NormalBalance.CREDIT, undefined, true);
   await createAccount('2105', 'Deferred Output VAT', liabilityType!.id, NormalBalance.CREDIT);
   await createAccount('2110', 'Income Tax Payable', liabilityType!.id, NormalBalance.CREDIT);
-  await createAccount('2200', 'Loans Payable', liabilityType!.id, NormalBalance.CREDIT);
-  await createAccount('2201', 'Short-Term Bank Loans', liabilityType!.id, NormalBalance.CREDIT, '2200');
-  await createAccount('2202', 'Long-Term Loans', liabilityType!.id, NormalBalance.CREDIT, '2200');
+  const loansPayable = await createAccount('2200', 'Loans Payable', liabilityType!.id, NormalBalance.CREDIT);
+  await createAccount('2201', 'Short-Term Bank Loans', liabilityType!.id, NormalBalance.CREDIT, loansPayable.id);
+  await createAccount('2202', 'Long-Term Loans', liabilityType!.id, NormalBalance.CREDIT, loansPayable.id);
 
   // Equity
-  await createAccount('3000', "Owner's Equity / Share Capital", equityType!.id, NormalBalance.CREDIT);
-  await createAccount('3001', 'Paid-in Capital', equityType!.id, NormalBalance.CREDIT, '3000');
+  const ownerEquity = await createAccount('3000', "Owner's Equity / Share Capital", equityType!.id, NormalBalance.CREDIT);
+  await createAccount('3001', 'Paid-in Capital', equityType!.id, NormalBalance.CREDIT, ownerEquity.id);
   await createAccount('3100', 'Retained Earnings', equityType!.id, NormalBalance.CREDIT, undefined, true);
   await createAccount('3200', 'Current Year Earnings', equityType!.id, NormalBalance.CREDIT, undefined, true);
   await createAccount('3300', 'Drawings / Dividends', equityType!.id, NormalBalance.DEBIT);
 
   // Income
-  await createAccount('4000', 'Revenue', incomeType!.id, NormalBalance.CREDIT);
-  await createAccount('4001', 'Sales Revenue', incomeType!.id, NormalBalance.CREDIT, '4000');
-  await createAccount('4002', 'Service Revenue', incomeType!.id, NormalBalance.CREDIT, '4000');
-  await createAccount('4100', 'Other Income', incomeType!.id, NormalBalance.CREDIT);
-  await createAccount('4101', 'Interest Income', incomeType!.id, NormalBalance.CREDIT, '4100');
-  await createAccount('4102', 'Gain on Asset Disposal', incomeType!.id, NormalBalance.CREDIT, '4100');
-  await createAccount('4103', 'Foreign Exchange Gain', incomeType!.id, NormalBalance.CREDIT, '4100');
+  const revenue = await createAccount('4000', 'Revenue', incomeType!.id, NormalBalance.CREDIT);
+  await createAccount('4001', 'Sales Revenue', incomeType!.id, NormalBalance.CREDIT, revenue.id);
+  await createAccount('4002', 'Service Revenue', incomeType!.id, NormalBalance.CREDIT, revenue.id);
+  const otherIncome = await createAccount('4100', 'Other Income', incomeType!.id, NormalBalance.CREDIT);
+  await createAccount('4101', 'Interest Income', incomeType!.id, NormalBalance.CREDIT, otherIncome.id);
+  await createAccount('4102', 'Gain on Asset Disposal', incomeType!.id, NormalBalance.CREDIT, otherIncome.id);
+  await createAccount('4103', 'Foreign Exchange Gain', incomeType!.id, NormalBalance.CREDIT, otherIncome.id);
 
   // Expenses
   const cogs = await createAccount('5000', 'Cost of Sales', expenseType!.id, NormalBalance.DEBIT, undefined, true);
@@ -404,11 +404,67 @@ async function main() {
     },
   });
 
+  // ── HR System Test Users ──────────────────────────────────────────────────
+  // Test data for HR-SYSTEM-HHC frontend application
+  const testHRUsers = [
+    { email: 'admin@hhc.com', firstName: 'System', lastName: 'Administrator', password: 'Admin@2026', role: 'Super Admin' },
+    { email: 'maria.santos@hhc.com', firstName: 'Maria', lastName: 'Santos', password: 'Maria@2026', role: 'Company Admin' },
+    { email: 'carlos.reyes@hhc.com', firstName: 'Carlos', lastName: 'Reyes', password: 'Carlos@2026', role: 'Company Admin' },
+    { email: 'john.smith@hhc.com', firstName: 'John', lastName: 'Smith', password: 'John@2026', role: 'Accountant' },
+    { email: 'emily.johnson@hhc.com', firstName: 'Emily', lastName: 'Johnson', password: 'Emily@2026', role: 'Accountant' },
+    { email: 'ang.santos@hhc.com', firstName: 'Angela', lastName: 'Santos', password: 'Angela@2026', role: 'AP Clerk' },
+    { email: 'robert.cruz@hhc.com', firstName: 'Robert', lastName: 'Cruz', password: 'Robert@2026', role: 'AR Clerk' },
+    { email: 'patricia.flores@hhc.com', firstName: 'Patricia', lastName: 'Flores', password: 'Patricia@2026', role: 'Payroll Officer' },
+    { email: 'michael.davis@hhc.com', firstName: 'Michael', lastName: 'Davis', password: 'Michael@2026', role: 'Auditor' },
+    { email: 'diana.wilson@hhc.com', firstName: 'Diana', lastName: 'Wilson', password: 'Diana@2026', role: 'Viewer' },
+    { email: 'thomas.anderson@hhc.com', firstName: 'Thomas', lastName: 'Anderson', password: 'Thomas@2026', role: 'Viewer' },
+  ];
+
+  for (const testUser of testHRUsers) {
+    const passHash = await bcrypt.hash(testUser.password, 12);
+    const role = await prisma.role.findUnique({ where: { name: testUser.role } });
+    
+    const user = await prisma.user.upsert({
+      where: { email: testUser.email },
+      update: {},
+      create: {
+        email: testUser.email,
+        passwordHash: passHash,
+        firstName: testUser.firstName,
+        lastName: testUser.lastName,
+      },
+    });
+
+    await prisma.userCompany.upsert({
+      where: { userId_companyId: { userId: user.id, companyId: company.id } },
+      update: {},
+      create: {
+        userId: user.id,
+        companyId: company.id,
+        roleId: role!.id,
+      },
+    });
+  }
+
   console.warn('✅ Demo company, users, customers, vendors seeded');
+  console.warn('✅ HR System test users seeded');
   console.warn('');
-  console.warn('🔑 Login credentials:');
+  console.warn('🔑 Admin Login credentials:');
   console.warn('   Email:    admin@demoenterprise.ph');
   console.warn('   Password: Admin@1234!');
+  console.warn('');
+  console.warn('🔑 HR System Test Users (all passwords end with @2026):');
+  console.warn('   1. admin@hhc.com            (Super Admin)');
+  console.warn('   2. maria.santos@hhc.com     (Company Admin) - HR-2026-001');
+  console.warn('   3. carlos.reyes@hhc.com     (Company Admin) - HR-2026-002');
+  console.warn('   4. john.smith@hhc.com       (Accountant)');
+  console.warn('   5. emily.johnson@hhc.com    (Accountant)');
+  console.warn('   6. ang.santos@hhc.com       (AP Clerk)');
+  console.warn('   7. robert.cruz@hhc.com      (AR Clerk)');
+  console.warn('   8. patricia.flores@hhc.com  (Payroll Officer)');
+  console.warn('   9. michael.davis@hhc.com    (Auditor)');
+  console.warn('   10. diana.wilson@hhc.com    (Viewer)');
+  console.warn('   11. thomas.anderson@hhc.com (Viewer)');
   console.warn('');
   console.warn('🌱 Seeding complete!');
 }

@@ -1133,10 +1133,10 @@ model Document {
   deletedAt       DateTime?
 
   company       Company        @relation(fields: [companyId], references: [id])
-  invoice       Invoice?       @relation(fields: [referenceId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [referenceId], references: [id])
-  expenseClaim  ExpenseClaim?  @relation(fields: [referenceId], references: [id])
-  asset         Asset?         @relation(fields: [referenceId], references: [id])
+  invoice       Invoice?       @relation(fields: [referenceId], references: [id], map: "documents_referenceId_invoice_fkey")
+  purchaseOrder PurchaseOrder? @relation(fields: [referenceId], references: [id], map: "documents_referenceId_purchaseOrder_fkey")
+  expenseClaim  ExpenseClaim?  @relation(fields: [referenceId], references: [id], map: "documents_referenceId_expenseClaim_fkey")
+  asset         Asset?         @relation(fields: [referenceId], references: [id], map: "documents_referenceId_asset_fkey")
 
   @@index([companyId, referenceType, referenceId])
   @@map("documents")
@@ -1188,8 +1188,8 @@ model Approval {
   createdAt      DateTime       @default(now())
 
   approver      User           @relation(fields: [approverId], references: [id])
-  purchaseOrder PurchaseOrder? @relation(fields: [referenceId], references: [id])
-  expenseClaim  ExpenseClaim?  @relation(fields: [referenceId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [referenceId], references: [id], map: "approvals_referenceId_purchaseOrder_fkey")
+  expenseClaim  ExpenseClaim?  @relation(fields: [referenceId], references: [id], map: "approvals_referenceId_expenseClaim_fkey")
 
   @@index([referenceType, referenceId])
   @@map("approvals")
